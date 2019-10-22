@@ -121,7 +121,8 @@ erl_flag({noinput, true})      -> "-noinput";
 erl_flag({sname, Name})        -> ["-sname ", Name];
 erl_flag({hidden, true})       -> "-hidden";
 erl_flag({connect_all, false}) -> "-connect_all false";
-erl_flag({eval, Expr})         -> "-eval '" ++ Expr ++ "'".
+erl_flag({eval, Expr})         -> "-eval '" ++ Expr ++ "'";
+erl_flag({pa, Path})           -> ["-pa ", Path].
 
 kill_switch(Node, MonitoredProcess) ->
     rpc(Node, erlang, spawn, [fun() ->
