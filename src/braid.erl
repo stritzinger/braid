@@ -50,7 +50,6 @@ init({Nodes, Module}) -> {ok, #{nodes => Nodes, module => Module}}.
 
 handle_call({start_link, Name, Args}, _From, State) ->
     {Node, _Port} = start_node(Name, Args),
-    timer:sleep(1000),
     send_module(Node, mget(State, [module])),
     kill_switch(Node, self()),
     {reply, Node, mput(State, [nodes, Name, node], Node)};
@@ -61,8 +60,8 @@ handle_call({connect, Source, Targets}, _From, State) ->
 handle_call(get_nodes, _From, State) ->
     {reply, mget(State, [nodes]), State};
 handle_call({netload, ObjectCode}, _From, State) ->
-    for_each_node(fun(_Node, Attrs) -> 
-                          send_module(mget(Attrs, [node]), ObjectCode) 
+    for_each_node(fun(_Node, Attrs) ->
+                          send_module(mget(Attrs, [node]), ObjectCode)
                   end, mget(State, [nodes])),
     {reply, ok, State};
 handle_call(stop, _From, State) ->
@@ -90,11 +89,20 @@ for_each_node(Fun, Nodes) ->
     end, ok, Nodes).
 
 proxy_start(Nodes) ->
+    Current = binary_to_list(atom_to_binary(node(), utf8)),
+    io:format("Current: ~p~n", [Current]),
+
+    % Temporarily register process so we can receive the node started event
+    register(braid, self()),
+
     {Node, _Port} = start_node(braid, [
         {noinput, true},
         {hidden, true}
     ]),
-    timer:sleep(1000),
+
+    % Unregister again so we don't keep the name
+    unregister(braid),
+
     Module = code:get_object_code(?MODULE),
     send_module(Node, Module),
     kill_switch(Node, self()),
@@ -118,8 +126,16 @@ mput(Map, [K|Keys], Value)  ->
 
 start_node(Name, Attrs) ->
     N = atom_to_list(Name),
-    Command = ["erl ", erl_flags([{sname, N}, {noinput, true}|Attrs])],
+    Current = atom_to_list(node()),
+    Command = ["erl ", erl_flags([
+        {sname, N},
+        {noinput, true},
+        {eval, ["erlang:send({braid, '", Current, "'}, node_started)"]}
+    |Attrs])],
     Port = open_port({spawn, Command}, []),
+    receive
+        node_started -> ok
+    end,
     {ok, Host} = inet:gethostname(),
     Node = iolist_to_atom([N, "@", Host]),
     {Node, Port}.
@@ -131,7 +147,7 @@ erl_flag({noinput, true})      -> "-noinput";
 erl_flag({sname, Name})        -> ["-sname ", Name];
 erl_flag({hidden, true})       -> "-hidden";
 erl_flag({connect_all, false}) -> "-connect_all false";
-erl_flag({eval, Expr})         -> "-eval '" ++ Expr ++ "'";
+erl_flag({eval, Expr})         -> "-eval \"" ++ Expr ++ "\"";
 erl_flag({pa, Path})           -> ["-pa ", Path].
 
 kill_switch(Node, MonitoredProcess) ->
