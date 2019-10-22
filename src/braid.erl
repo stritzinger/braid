@@ -5,6 +5,7 @@
 % API
 -export([create/1]).
 -export([multicall/4]).
+-export([netload/2]).
 -export([stop/1]).
 -export([start_manager/2]).
 
@@ -33,6 +34,10 @@ multicall(Proxy, M, F, A) ->
         maps:put(Name, Result, Acc)
     end, #{}, Nodes).
 
+netload(Proxy, Module) ->
+    ObjectCode = code:get_object_code(Module),
+    proxy_call(Proxy, {netload, ObjectCode}).
+
 stop(Proxy) ->
     proxy_call(Proxy, stop).
 
@@ -55,6 +60,11 @@ handle_call({connect, Source, Targets}, _From, State) ->
     {reply, ok, State};
 handle_call(get_nodes, _From, State) ->
     {reply, mget(State, [nodes]), State};
+handle_call({netload, ObjectCode}, _From, State) ->
+    for_each_node(fun(_Node, Attrs) -> 
+                          send_module(mget(Attrs, [node]), ObjectCode) 
+                  end, mget(State, [nodes])),
+    {reply, ok, State};
 handle_call(stop, _From, State) ->
     init:stop(),
     {reply, ok, State};
