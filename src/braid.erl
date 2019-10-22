@@ -110,7 +110,8 @@ start_node(Name, Attrs) ->
     N = atom_to_list(Name),
     Command = ["erl ", erl_flags([{sname, N}, {noinput, true}|Attrs])],
     Port = open_port({spawn, Command}, []),
-    Node = iolist_to_atom([N, "@", net_adm:localhost()]),
+    {ok, Host} = inet:gethostname(),
+    Node = iolist_to_atom([N, "@", Host]),
     {Node, Port}.
 
 erl_flags(Attrs) ->
