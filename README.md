@@ -8,10 +8,10 @@ up.
 
 ## Model
 
-Braid creates a hidden proxy node called `braid` that sets up all other nodes
-and maintains connection to them. The reason is to avoid leaking node
-connections which would enlarge the cluster by mistake, or force the user to use
-the library from a hidden node.
+Braid starts a manager process on the current node, which in turn is responsible
+for setting up the cluster. Because RPC calls are made to the cluster, it is
+best to start the node running the manager as a hidden node. This avoids the
+problem of making the manager node part of the cluster.
 
 ## Example
 
@@ -41,18 +41,24 @@ Nodes = #{
 You can create a cluster with:
 
 ```erlang
-1> Cluster = braid:create(Nodes).
-{'braid@host',<16361.87.0>}
+$ erl -sname manager -hidden
+(manager@host)1> Cluster = braid:create(Nodes).
+<0.87.0>
 ```
 
 To check the cluster connections:
 
 ```
-2> braid:multicall(Cluster, erlang, nodes, []).
+(manager@host)2> braid:multicall(Cluster, erlang, nodes, []).
 #{n1 => ['n4@host','n2@host'],
   n2 => ['n1@host','n3@host'],
   n3 => ['n2@host','n4@host'],
   n4 => ['n1@host','n3@host']}
+(manager@host)3> braid:multicall(Cluster, erlang, nodes, [hidden]).
+#{n1 => ['manager@host'],
+  n2 => ['manager@host'],
+  n3 => ['manager@host'],
+  n4 => ['manager@host']}
 ```
 
 # Roadmap

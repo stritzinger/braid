@@ -7,7 +7,6 @@
 -export([multicall/4]).
 -export([netload/2]).
 -export([stop/1]).
--export([start_manager/2]).
 
 % Callbacks
 -export([init/1]).
@@ -18,39 +17,41 @@
 %--- API -----------------------------------------------------------------------
 
 create(Nodes) ->
-    Proxy = proxy_start(Nodes),
-    for_each_node(fun(Node, #{args := Args}) ->
-        start_link(Proxy, Node, Args)
+    {ok, Manager} = gen_server:start_link({local, ?MODULE}, ?MODULE, Nodes, []),
+    for_each_node(fun(Name, #{args := Args}) ->
+        gen_server:call(Manager, {start_link, Name, Args})
     end, Nodes),
     for_each_node(fun(Node, Attrs) ->
-        proxy_call(Proxy, {connect, Node, maps:get(connections, Attrs)})
+        gen_server:call(Manager, {connect, Node, maps:get(connections, Attrs)})
     end, Nodes),
-    Proxy.
+    Manager.
 
-multicall(Proxy, M, F, A) ->
-    Nodes = proxy_call(Proxy, get_nodes),
+multicall(Manager, M, F, A) ->
+    Nodes = gen_server:call(Manager, get_nodes),
     maps:fold(fun(Name, Attrs, Acc) ->
-        Result = proxy_rpc(Proxy, mget(Attrs, [node]), M, F, A),
+        Result = rpc:call(mget(Attrs, [node]), M, F, A),
         maps:put(Name, Result, Acc)
     end, #{}, Nodes).
 
-netload(Proxy, Module) ->
+netload(Manager, Module) ->
     ObjectCode = code:get_object_code(Module),
-    proxy_call(Proxy, {netload, ObjectCode}).
+    Nodes = gen_server:call(Manager, get_nodes),
+    for_each_node(fun(_Node, Attrs) ->
+        send_module(mget(Attrs, [node]), ObjectCode)
+    end, Nodes),
+    ok.
 
-stop(Proxy) ->
-    proxy_call(Proxy, stop).
-
-start_manager(Nodes, Module) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, {Nodes, Module}, []).
+stop(Manager) ->
+    gen_server:call(Manager, stop).
 
 %--- Callbacks -----------------------------------------------------------------
 
-init({Nodes, Module}) -> {ok, #{nodes => Nodes, module => Module}}.
+init(Nodes) -> {ok, #{nodes => Nodes}}.
 
 handle_call({start_link, Name, Args}, _From, State) ->
     {Node, _Port} = start_node(Name, Args),
-    send_module(Node, mget(State, [module])),
+    Module = code:get_object_code(?MODULE),
+    send_module(Node, Module),
     kill_switch(Node, self()),
     {reply, Node, mput(State, [nodes, Name, node], Node)};
 handle_call({connect, Source, Targets}, _From, State) ->
@@ -59,11 +60,6 @@ handle_call({connect, Source, Targets}, _From, State) ->
     {reply, ok, State};
 handle_call(get_nodes, _From, State) ->
     {reply, mget(State, [nodes]), State};
-handle_call({netload, ObjectCode}, _From, State) ->
-    for_each_node(fun(_Node, Attrs) ->
-                          send_module(mget(Attrs, [node]), ObjectCode)
-                  end, mget(State, [nodes])),
-    {reply, ok, State};
 handle_call(stop, _From, State) ->
     init:stop(),
     {reply, ok, State};
@@ -76,9 +72,6 @@ handle_info(Info, _State) -> error({unknown_info, Info}).
 
 %--- Internal ------------------------------------------------------------------
 
-start_link(Proxy, Name, Args) ->
-    proxy_call(Proxy, {start_link, Name, Args}).
-
 connect(From, To) ->
     true = rpc(From, net_kernel, connect_node, [To]).
 
@@ -87,33 +80,6 @@ for_each_node(Fun, Nodes) ->
         Fun(Node, Attrs),
         ok
     end, ok, Nodes).
-
-proxy_start(Nodes) ->
-    Current = binary_to_list(atom_to_binary(node(), utf8)),
-    io:format("Current: ~p~n", [Current]),
-
-    % Temporarily register process so we can receive the node started event
-    register(braid, self()),
-
-    {Node, _Port} = start_node(braid, [
-        {noinput, true},
-        {hidden, true}
-    ]),
-
-    % Unregister again so we don't keep the name
-    unregister(braid),
-
-    Module = code:get_object_code(?MODULE),
-    send_module(Node, Module),
-    kill_switch(Node, self()),
-    {ok, Pid} = rpc(Node, ?MODULE, start_manager, [Nodes, Module]),
-    {Node, Pid}.
-
-proxy_call({Node, Pid}, Request) ->
-    rpc(Node, gen_server, call, [Pid, Request]).
-
-proxy_rpc({Proxy, _Pid}, Node, M, F, A) ->
-    rpc(Proxy, rpc, call, [Node, M, F, A]).
 
 mget(Value, [])     -> Value;
 mget(Map, [K|Keys]) -> mget(maps:get(K, Map), Keys).
