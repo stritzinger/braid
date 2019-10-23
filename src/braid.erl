@@ -68,7 +68,11 @@ handle_call(Request, From, _State) ->
 
 handle_cast(Request, _State) -> error({unknown_cast, Request}).
 
-handle_info(Info, _State) -> error({unknown_info, Info}).
+handle_info({_Port, {data, Data}}, State) -> 
+    io:format(Data),
+    {noreply, State};
+handle_info(Info, _State) -> 
+    error({unknown_info, Info}).
 
 %--- Internal ------------------------------------------------------------------
 
