@@ -9,9 +9,11 @@ up.
 ## Model
 
 Braid starts a manager process on the current node, which in turn is responsible
-for setting up the cluster. Because RPC calls are made to the cluster, it is
-best to start the node running the manager as a hidden node. This avoids the
-problem of making the manager node part of the cluster.
+for setting up the cluster. The nodes started in the cluster connects back to
+the current node via [hidden node connections][1]. If you want to connect
+additional managing nodes to the cluster, it might be a good idea to make those
+nodes hidden as well to prevent the test cluster from seeing unexpected new
+normal nodes. This all depends on what you are testing of course.
 
 ## Example
 
@@ -65,3 +67,7 @@ To check the cluster connections:
 
 - [ ] Support starting nodes on remote hosts
 - [ ] Allow custom `erl` command line flags
+
+
+
+[1]: http://erlang.org/doc/reference_manual/distributed.html#hidden-nodes

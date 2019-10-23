@@ -100,7 +100,10 @@ start_node(Name, Attrs) ->
     Command = ["erl ", erl_flags([
         {sname, N},
         {noinput, true},
-        {eval, ["erlang:send({braid, '", Current, "'}, node_started)"]}
+        {eval, [
+            "net_kernel:hidden_connect_node('", Current, "'),"
+            "erlang:send({braid, '", Current, "'}, node_started)"
+        ]}
     |Attrs])],
     Port = open_port({spawn, Command}, []),
     receive
