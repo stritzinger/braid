@@ -42,27 +42,43 @@ netload(Manager, Module) ->
     ok.
 
 stop(Manager) ->
-    gen_server:call(Manager, stop).
+    ok = gen_server:call(Manager, stop, 10000),
+    Ref = erlang:monitor(process, Manager),
+    receive
+        {'DOWN', Ref, process, Manager, _Reason} ->
+            ok
+    after
+        5000 ->
+            error({manager_not_stopped, Manager})
+    end.
 
 %--- Callbacks -----------------------------------------------------------------
 
 init(Nodes) -> {ok, #{nodes => Nodes}}.
 
 handle_call({start_link, Name, Args}, _From, State) ->
-    {Node, _Port} = start_node(Name, Args),
+    {Node, Port} = start_node(Name, Args),
     Module = code:get_object_code(?MODULE),
     send_module(Node, Module),
     kill_switch(Node, self()),
-    {reply, Node, mput(State, [nodes, Name, node], Node)};
+    Attrs = mget(State, [nodes, Name]),
+    NewAttrs = Attrs#{node => Node, port => Port},
+    {reply, Node, mput(State, [nodes, Name], NewAttrs)};
 handle_call({connect, Source, Targets}, _From, State) ->
     SourceNode = mget(State, [nodes, Source, node]),
     [connect(SourceNode, mget(State, [nodes, T, node])) || T <- Targets],
     {reply, ok, State};
 handle_call(get_nodes, _From, State) ->
     {reply, mget(State, [nodes]), State};
-handle_call(stop, _From, State) ->
-    init:stop(),
-    {reply, ok, State};
+handle_call(stop, _From, #{nodes := Nodes} = State) ->
+    for_each_node(fun(_Name, #{node := Node, port := Port}) ->
+        rpc:call(Node, init, stop, []),
+        Ref = erlang:monitor(port, Port),
+        receive {'DOWN', Ref, port, Port, _Reason} -> ok
+        after 5000 -> error({node_not_stopped, Node})
+        end
+    end, Nodes),
+    {stop, normal, ok, State};
 handle_call(Request, From, _State) ->
     error({unknown_request, Request, From}).
 
