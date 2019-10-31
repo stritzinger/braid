@@ -42,7 +42,7 @@ netload(Manager, Module) ->
     ok.
 
 stop(Manager) ->
-    ok = gen_server:call(Manager, stop, 10000),
+    ok = gen_server:call(Manager, stop, 60000),
     Ref = erlang:monitor(process, Manager),
     receive
         {'DOWN', Ref, process, Manager, _Reason} ->
