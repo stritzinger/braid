@@ -87,10 +87,16 @@ handle_call(Request, From, _State) ->
 
 handle_cast(Request, _State) -> error({unknown_cast, Request}).
 
-handle_info({_Port, {data, Data}}, State) -> 
-    io:format(Data),
+handle_info({Port, {data, Data}}, State) ->
+    [#{node := Node}] = maps:values(maps:filter(fun
+        (_N, #{port := P}) when P =:= Port -> true;
+        (_N, _Attr) -> false
+    end,  maps:get(nodes, State))),
+    Lines = binary:split(Data, <<"\n">>),
+    Formatted = [[atom_to_list(Node), L, $\n] || L <- Lines],
+    io:format(Formatted),
     {noreply, State};
-handle_info(Info, _State) -> 
+handle_info(Info, _State) ->
     error({unknown_info, Info}).
 
 %--- Internal ------------------------------------------------------------------
@@ -124,7 +130,7 @@ start_node(Name, Attrs) ->
             "erlang:send({braid, '", Current, "'}, node_started)"
         ]}
     |Attrs])],
-    Port = open_port({spawn, Command}, []),
+    Port = open_port({spawn, Command}, [binary]),
     receive
         node_started -> ok
     end,
