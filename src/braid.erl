@@ -7,6 +7,7 @@
 -export([multicall/4]).
 -export([netload/2]).
 -export([stop/1]).
+-export([stop/2]).
 
 % Callbacks
 -export([init/1]).
@@ -41,8 +42,10 @@ netload(Manager, Module) ->
     end, Nodes),
     ok.
 
-stop(Manager) ->
-    ok = gen_server:call(Manager, stop, 60000),
+stop(Manager) -> stop(Manager, 5000).
+
+stop(Manager, Timeout) ->
+    ok = gen_server:call(Manager, stop, Timeout),
     Ref = erlang:monitor(process, Manager),
     receive
         {'DOWN', Ref, process, Manager, _Reason} ->
