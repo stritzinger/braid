@@ -4,8 +4,13 @@
 
 % API
 -export([create/1]).
+-export([info/2]).
+-export([start/2]).
+-export([connect/2]).
 -export([multicall/4]).
+-export([call/5]).
 -export([netload/2]).
+-export([netload/3]).
 -export([stop/1]).
 -export([stop/2]).
 
@@ -19,28 +24,47 @@
 
 create(Nodes) ->
     {ok, Manager} = gen_server:start_link({local, ?MODULE}, ?MODULE, Nodes, []),
-    for_each_node(fun(Name, #{args := Args}) ->
-        gen_server:call(Manager, {start_link, Name, Args})
+    for_each_node(fun(Name, _Attrs) ->
+        gen_server:call(Manager, {start_link, Name})
     end, Nodes),
     for_each_node(fun(Node, Attrs) ->
         gen_server:call(Manager, {connect, Node, maps:get(connections, Attrs)})
     end, Nodes),
     Manager.
 
+info(Manager, Name) ->
+    gen_server:call(Manager, {info, Name}).
+
+start(Manager, Name) ->
+    gen_server:call(Manager, {start_link, Name}).
+
+connect(Manager, Name) ->
+    Attrs = gen_server:call(Manager, {info, Name}),
+    gen_server:call(Manager, {connect, Name, maps:get(connections, Attrs)}).
+
 multicall(Manager, M, F, A) ->
     Nodes = gen_server:call(Manager, get_nodes),
     maps:fold(fun(Name, Attrs, Acc) ->
-        Result = rpc:call(mget(Attrs, [node]), M, F, A),
+        Result = rpc:call(maps:get(node, Attrs), M, F, A),
         maps:put(Name, Result, Acc)
     end, #{}, Nodes).
+
+call(Manager, Name, M, F, A) ->
+    Attrs = gen_server:call(Manager, {info, Name}),
+    rpc:call(maps:get(node, Attrs), M, F, A).
 
 netload(Manager, Module) ->
     ObjectCode = code:get_object_code(Module),
     Nodes = gen_server:call(Manager, get_nodes),
     for_each_node(fun(_Node, Attrs) ->
-        send_module(mget(Attrs, [node]), ObjectCode)
+        send_module(maps:get(node, Attrs), ObjectCode)
     end, Nodes),
     ok.
+
+netload(Manager, Name, Module) ->
+    ObjectCode = code:get_object_code(Module),
+    Attrs = gen_server:call(Manager, {info, Name}),
+    send_module(maps:get(node, Attrs), ObjectCode).
 
 stop(Manager) -> stop(Manager, 5000).
 
@@ -59,20 +83,31 @@ stop(Manager, Timeout) ->
 
 init(Nodes) -> {ok, #{nodes => Nodes}}.
 
-handle_call({start_link, Name, Args}, _From, State) ->
-    {Node, Port} = start_node(Name, Args),
-    Module = code:get_object_code(?MODULE),
-    send_module(Node, Module),
-    kill_switch(Node, self()),
-    Attrs = mget(State, [nodes, Name]),
-    NewAttrs = Attrs#{node => Node, port => Port},
-    {reply, Node, mput(State, [nodes, Name], NewAttrs)};
+handle_call({start_link, Name}, _From, State) ->
+    case mapz:deep_get([nodes, Name], State) of
+        #{status := alive} ->
+            {reply, {error, already_started}, State};
+        #{} ->
+            Args = mapz:deep_get([nodes, Name, args], State),
+            {Node, Monitor, Port} = start_node(Name, Args),
+            Attrs = mapz:deep_get([nodes, Name], State),
+            NewAttrs = Attrs#{
+                node => Node,
+                args => Args,
+                port => Port,
+                monitor => Monitor,
+                status => alive
+            },
+            {reply, ok, mapz:deep_put([nodes, Name], NewAttrs, State)}
+    end;
 handle_call({connect, Source, Targets}, _From, State) ->
-    SourceNode = mget(State, [nodes, Source, node]),
-    [connect(SourceNode, mget(State, [nodes, T, node])) || T <- Targets],
+    SourceNode = mapz:deep_get([nodes, Source, node], State),
+    [connect_nodes(SourceNode, mapz:deep_get([nodes, T, node], State)) || T <- Targets],
     {reply, ok, State};
+handle_call({info, Node}, _From, State) ->
+    {reply, mapz:deep_get([nodes, Node], State), State};
 handle_call(get_nodes, _From, State) ->
-    {reply, mget(State, [nodes]), State};
+    {reply, mapz:deep_get([nodes], State), State};
 handle_call(stop, _From, #{nodes := Nodes} = State) ->
     for_each_node(fun(_Name, #{node := Node, port := Port}) ->
         rpc:call(Node, init, stop, []),
@@ -96,12 +131,18 @@ handle_info({Port, {data, Data}}, State) ->
     Formatted = [[atom_to_list(Node), L, $\n] || L <- Lines],
     io:format(Formatted),
     {noreply, State};
+handle_info({'DOWN', Monitor, port, Port, Reason}, #{nodes := Nodes} = State) ->
+    {value, {Node, _Attrs}} = lists:search(fun
+        ({_Name, #{monitor := M, port := P}}) when M =:= Monitor, P =:= Port -> true;
+        (_Node)                                                              -> false
+    end, maps:to_list(Nodes)),
+    {noreply, mapz:deep_put([nodes, Node, status], {down, Reason}, State)};
 handle_info(Info, _State) ->
     error({unknown_info, Info}).
 
 %--- Internal ------------------------------------------------------------------
 
-connect(From, To) ->
+connect_nodes(From, To) ->
     true = rpc(From, net_kernel, connect_node, [To]).
 
 for_each_node(Fun, Nodes) ->
@@ -109,15 +150,6 @@ for_each_node(Fun, Nodes) ->
         Fun(Node, Attrs),
         ok
     end, ok, Nodes).
-
-mget(Value, [])     -> Value;
-mget(Map, [K|Keys]) -> mget(maps:get(K, Map), Keys).
-
-
-mput(Map, [K], Value) ->
-    maps:put(K, Value, Map);
-mput(Map, [K|Keys], Value)  ->
-    maps:put(K, mput(maps:get(K, Map), Keys, Value), Map).
 
 start_node(Name, Attrs) ->
     N = atom_to_list(Name),
@@ -131,12 +163,13 @@ start_node(Name, Attrs) ->
         ]}
     |Attrs])],
     Port = open_port({spawn, Command}, [binary]),
-    receive
-        node_started -> ok
-    end,
+    Monitor = receive node_started -> erlang:monitor(port, Port) end,
     {ok, Host} = inet:gethostname(),
     Node = iolist_to_atom([N, "@", Host]),
-    {Node, Port}.
+    Module = code:get_object_code(?MODULE),
+    send_module(Node, Module),
+    kill_switch(Node, self()),
+    {Node, Monitor, Port}.
 
 erl_flags(Attrs) ->
     string:join([erl_flag(A) || A <- Attrs], " ").
