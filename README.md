@@ -43,7 +43,6 @@ Nodes = #{
 You can create a cluster with:
 
 ```erlang
-$ erl -sname manager -hidden
 (manager@host)1> Cluster = braid:create(Nodes).
 <0.87.0>
 ```
