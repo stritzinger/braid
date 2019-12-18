@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Allow arbitrary string flags when starting Erlang nodes.
+
 ## [0.0.1] - 2019-12-16
 
 * Added `info/2` function that returns node metadata.

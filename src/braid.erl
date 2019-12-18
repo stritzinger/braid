@@ -174,12 +174,13 @@ start_node(Name, Attrs) ->
 erl_flags(Attrs) ->
     string:join([erl_flag(A) || A <- Attrs], " ").
 
-erl_flag({noinput, true})      -> "-noinput";
-erl_flag({sname, Name})        -> ["-sname ", Name];
-erl_flag({hidden, true})       -> "-hidden";
-erl_flag({connect_all, false}) -> "-connect_all false";
-erl_flag({eval, Expr})         -> "-eval \"" ++ Expr ++ "\"";
-erl_flag({pa, Path})           -> ["-pa ", Path].
+erl_flag({noinput, true})             -> "-noinput";
+erl_flag({sname, Name})               -> ["-sname ", Name];
+erl_flag({hidden, true})              -> "-hidden";
+erl_flag({connect_all, false})        -> "-connect_all false";
+erl_flag({eval, Expr})                -> "-eval \"" ++ Expr ++ "\"";
+erl_flag({pa, Path})                  -> ["-pa ", Path];
+erl_flag(String) when is_list(String) -> String.
 
 kill_switch(Node, MonitoredProcess) ->
     rpc(Node, erlang, spawn, [fun() ->
