@@ -23,7 +23,7 @@
 %--- API -----------------------------------------------------------------------
 
 create(Nodes) ->
-    {ok, Manager} = gen_server:start_link({local, ?MODULE}, ?MODULE, Nodes, []),
+    Manager = start_manager(Nodes),
     for_each_node(fun(Name, _Attrs) ->
         gen_server:call(Manager, {start_link, Name})
     end, Nodes),
@@ -81,7 +81,11 @@ stop(Manager, Timeout) ->
 
 %--- Callbacks -----------------------------------------------------------------
 
-init(Nodes) -> {ok, #{nodes => Nodes}}.
+init(Nodes) ->
+    case erlang:node() of
+        'nonode@nohost' -> {stop, no_distribution};
+        _Node -> {ok, #{nodes => Nodes}}
+    end.
 
 handle_call({start_link, Name}, _From, State) ->
     case mapz:deep_get([nodes, Name], State) of
@@ -141,6 +145,12 @@ handle_info(Info, _State) ->
     error({unknown_info, Info}).
 
 %--- Internal ------------------------------------------------------------------
+
+start_manager(Nodes) ->
+    case gen_server:start_link({local, ?MODULE}, ?MODULE, Nodes, []) of
+        {ok, Manager} -> Manager;
+        {error, Reason} -> error(Reason)
+    end.
 
 connect_nodes(From, To) ->
     true = rpc(From, net_kernel, connect_node, [To]).
