@@ -1,8 +1,11 @@
 {"1.2.0",
-[{<<"mapz">>,{pkg,<<"mapz">>,<<"2.2.0">>},0}]}.
+[{<<"jsx">>,{pkg,<<"jsx">>,<<"3.1.0">>},0},
+ {<<"mapz">>,{pkg,<<"mapz">>,<<"2.2.0">>},0}]}.
 [
 {pkg_hash,[
+ {<<"jsx">>, <<"D12516BAA0BB23A59BB35DCCAF02A1BD08243FCBB9EFE24F2D9D056CCFF71268">>},
  {<<"mapz">>, <<"81EE5AD249BBC9427DAA6C3EE5166F88A448C5B0B2F5BBEE0495266308AFF2BA">>}]},
 {pkg_hash_ext,[
+ {<<"jsx">>, <<"0C5CC8FDC11B53CC25CF65AC6705AD39E54ECC56D1C22E4ADB8F5A53FB9427F3">>},
  {<<"mapz">>, <<"861A878A86AB7E5897A9B57B3CA0B188FB53CE2935B153872C61F6641E709AA8">>}]}
 ].
