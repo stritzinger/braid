@@ -25,8 +25,9 @@ send_launch_config(Host, Config) ->
     ContentType = "application/json",
     Body = jsx:encode(Config),
     io:format("sending :~p~n",[Body]),
-    {ok, Result} = httpc:request(post, {URI, [], ContentType, Body},
-                                 [],
+    H = headers(),
+    {ok, Result} = httpc:request(post, {URI, H, ContentType, Body},
+                                 http_opts(),
                                  [{body_format, binary}]),
     {{_HTTP, 200, "OK"}, _Headers, Reply} = Result,
     json_decode(Reply).
@@ -36,15 +37,17 @@ send_destroy_config(Host, Config) ->
     ContentType = "application/json",
     Body = jsx:encode(Config),
     io:format("sending :~p~n",[Body]),
-    {ok, Result} = httpc:request(delete, {URI, [], ContentType, Body},
-                                 [],
+    H = headers(),
+    {ok, Result} = httpc:request(delete, {URI, H, ContentType, Body},
+                                 http_opts(),
                                  [{body_format, binary}]),
     {{_HTTP, 200, "OK"}, _Headers, Reply} = Result,
     json_decode(Reply).
 
 send_list_req(Host) ->
     URI = compose_uri(Host, "list"),
-    {ok, Result} = httpc:request(get, {URI, []}, [], [{body_format, binary}]),
+    H = headers(),
+    {ok, Result} = httpc:request(get, {URI, H}, http_opts(), [{body_format, binary}]),
     {{_HTTP, 200, "OK"}, _Headers, Body} = Result,
     json_decode(Body).
 
@@ -55,12 +58,40 @@ parse_config(ConfigPath) ->
 
 parse_hosts(Config) ->
     [ begin
-        [_, Hostname] = string:split(atom_to_list(Orchestrator), "@"),
-        Hostname
+        atom_to_binary(Orchestrator)
     end || {Orchestrator, _Nodes} <- maps:to_list(Config)].
 
 compose_uri(Host, Method) ->
-    "http://" ++ Host ++ ":8080/api/" ++ Method.
+    {ok, Scheme} = application:get_env(braid, scheme),
+    {ok, Port} = application:get_env(braid, port),
+    uri_string:recompose(#{
+        scheme => Scheme,
+        host => Host,
+        port => Port,
+        path => "/api/" ++ Method
+    }).
 
 json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
+
+headers() ->
+    {ok, Token} = application:get_env(braid, token),
+    [{"Authorization",  "Bearer " ++ Token}].
+
+
+http_opts() ->
+    {ok, Scheme} = application:get_env(braid, scheme),
+    case Scheme of
+        "https" ->
+            [
+                {ssl, [
+                    {verify, verify_peer},
+                    {cacerts, certifi:cacerts()},
+                    {customize_hostname_check, [
+                        {match_fun,
+                            public_key:pkix_verify_hostname_match_fun(https)}
+                    ]}
+                ]}
+            ];
+        _ -> []
+     end.

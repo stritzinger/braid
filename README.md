@@ -1,3 +1,21 @@
+# braid_rest WIP
+
+Launch and see node state on fly.io
+
+    rebar3 shell
+
+    braid_rest:launch("examples/fly.io.config").
+    braid_rest:list("braidnet-ams.fly.dev").
+
+
+Launch from a local braidnet node
+
+    rebar3 as test shell
+
+    braid_rest:launch("examples/shell.config").
+    braid_rest:list("localhost").
+
+
 # braid
 
 Braid is an Erlang library to create and connect an arbitrary cluster of nodes.
