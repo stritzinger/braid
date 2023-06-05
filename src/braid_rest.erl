@@ -8,65 +8,58 @@
 
 launch(ConfigPath) ->
     Config = parse_config(ConfigPath),
-    Hosts = parse_hosts(Config),
-    [{H, send_launch_config(H, Config)} || H <- Hosts].
+    Orchestrators = parse_instances(Config),
+    [{Orch, send_to_instance(post, Orch, "launch", Config)} ||
+        Orch <- Orchestrators].
 
-list(Host) -> send_list_req(Host).
+list(ConfigPath) ->
+    Config = parse_config(ConfigPath),
+    Orchestrators = parse_instances(Config),
+    [{Orch, send_to_instance(get, Orch, "list", [])} ||
+        Orch <- Orchestrators].
 
 destroy(ConfigPath) ->
     Config = parse_config(ConfigPath),
-    Hosts = parse_hosts(Config),
-    [{H, send_destroy_config(H, Config)} || H <- Hosts].
+    Orchestrators = parse_instances(Config),
+    [{Orch, send_to_instance(delete, Orch, "destroy", Config)} ||
+        Orch <- Orchestrators].
 
 % internal ---------------------------------------------------------------------
 
-send_launch_config(Host, Config) ->
-    URI = compose_uri(Host, "launch"),
-    ContentType = "application/json",
-    Body = jsx:encode(Config),
-    io:format("sending :~p~n",[Body]),
-    H = headers(),
-    {ok, Result} = httpc:request(post, {URI, H, ContentType, Body},
+send_to_instance(Method, Instance, API, Message) ->
+    URI = compose_uri(API),
+    H = headers(Instance),
+    Request = case Method of
+        get -> {URI, H};
+        _ ->
+            ContentType = "application/json",
+            Body = jsx:encode(Message),
+            io:format("sending :~p~n",[Body]),
+            {URI, H, ContentType, Body}
+    end,
+    {ok, Result} = httpc:request(Method, Request,
                                  http_opts(),
                                  [{body_format, binary}]),
     {{_HTTP, 200, "OK"}, _Headers, Reply} = Result,
     json_decode(Reply).
-
-send_destroy_config(Host, Config) ->
-    URI = compose_uri(Host, "destroy"),
-    ContentType = "application/json",
-    Body = jsx:encode(Config),
-    io:format("sending :~p~n",[Body]),
-    H = headers(),
-    {ok, Result} = httpc:request(delete, {URI, H, ContentType, Body},
-                                 http_opts(),
-                                 [{body_format, binary}]),
-    {{_HTTP, 200, "OK"}, _Headers, Reply} = Result,
-    json_decode(Reply).
-
-send_list_req(Host) ->
-    URI = compose_uri(Host, "list"),
-    H = headers(),
-    {ok, Result} = httpc:request(get, {URI, H}, http_opts(), [{body_format, binary}]),
-    {{_HTTP, 200, "OK"}, _Headers, Body} = Result,
-    json_decode(Body).
 
 parse_config(ConfigPath) ->
     {ok, [Config]} = file:consult(ConfigPath),
     io:format("Using config: ~p~n", [Config]),
     Config.
 
-parse_hosts(Config) ->
+parse_instances(Config) ->
     [ begin
         atom_to_binary(Orchestrator)
     end || {Orchestrator, _Nodes} <- maps:to_list(Config)].
 
-compose_uri(Host, Method) ->
+compose_uri(Method) ->
     {ok, Scheme} = application:get_env(braid, scheme),
+    {ok, Domain} = application:get_env(braid, domain),
     {ok, Port} = application:get_env(braid, port),
     uri_string:recompose(#{
         scheme => Scheme,
-        host => Host,
+        host => Domain,
         port => Port,
         path => "/api/" ++ Method
     }).
@@ -74,9 +67,12 @@ compose_uri(Host, Method) ->
 json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
 
-headers() ->
+headers(Instance) ->
     {ok, Token} = application:get_env(braid, token),
-    [{"Authorization",  "Bearer " ++ Token}].
+    [
+        {"Authorization", "Bearer " ++ Token},
+        {"fly-force-instance-id", Instance}
+    ].
 
 
 http_opts() ->
