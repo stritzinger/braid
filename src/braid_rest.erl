@@ -2,6 +2,7 @@
 
 -export([launch/1]).
 -export([list/1]).
+-export([logs/2]).
 -export([destroy/1]).
 
 % API --------------------------------------------------------------------------
@@ -18,6 +19,10 @@ list(ConfigPath) ->
     [{Orch, send_to_instance(get, Orch, "list", [])} ||
         Orch <- Orchestrators].
 
+logs(Instance, CID) ->
+    Logs = send_to_instance(get, Instance, "logs", [{"cid", CID}]),
+    io:format("~s",[Logs]).
+
 destroy(ConfigPath) ->
     Config = parse_config(ConfigPath),
     Orchestrators = parse_instances(Config),
@@ -27,15 +32,18 @@ destroy(ConfigPath) ->
 % internal ---------------------------------------------------------------------
 
 send_to_instance(Method, Instance, API, Message) ->
-    URI = compose_uri(API),
+    URIMap = compose_uri_map(API),
     H = headers(Instance),
     Request = case Method of
-        get -> {URI, H};
+        get ->
+            Query = uri_string:compose_query(Message),
+            URI = uri_string:recompose(URIMap#{query => Query}),
+            {URI, H};
         _ ->
             ContentType = "application/json",
             Body = jsx:encode(Message),
             io:format("sending :~p~n",[Body]),
-            {URI, H, ContentType, Body}
+            {uri_string:recompose(URIMap), H, ContentType, Body}
     end,
     {ok, Result} = httpc:request(Method, Request,
                                  http_opts(),
@@ -53,16 +61,16 @@ parse_instances(Config) ->
         atom_to_binary(Orchestrator)
     end || {Orchestrator, _Nodes} <- maps:to_list(Config)].
 
-compose_uri(Method) ->
+compose_uri_map(Method) ->
     {ok, Scheme} = application:get_env(braid, scheme),
     {ok, Domain} = application:get_env(braid, domain),
     {ok, Port} = application:get_env(braid, port),
-    uri_string:recompose(#{
+    #{
         scheme => Scheme,
         host => Domain,
         port => Port,
         path => "/api/" ++ Method
-    }).
+    }.
 
 json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).

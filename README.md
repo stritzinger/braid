@@ -6,6 +6,7 @@ Launch and see node state on fly.io
 
     braid_rest:launch("examples/fly.io.config").
     braid_rest:list("braidnet-ams.fly.dev").
+    braid_rest:logs("fly-instance-id", "container-id").
 
 
 Launch from a local braidnet node
