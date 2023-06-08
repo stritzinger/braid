@@ -20,8 +20,7 @@ list(ConfigPath) ->
         Orch <- Orchestrators].
 
 logs(Instance, CID) ->
-    Logs = send_to_instance(get, Instance, "logs", [{"cid", CID}]),
-    io:format("~s",[Logs]).
+    send_to_instance(get, Instance, "logs", [{"cid", CID}]).
 
 destroy(ConfigPath) ->
     Config = parse_config(ConfigPath),
@@ -42,18 +41,21 @@ send_to_instance(Method, Instance, API, Message) ->
         _ ->
             ContentType = "application/json",
             Body = jsx:encode(Message),
-            io:format("sending :~p~n",[Body]),
             {uri_string:recompose(URIMap), H, ContentType, Body}
     end,
+    % io:format("sending ~p\n",[Request]),
     {ok, Result} = httpc:request(Method, Request,
                                  http_opts(),
                                  [{body_format, binary}]),
-    {{_HTTP, 200, "OK"}, _Headers, Reply} = Result,
-    json_decode(Reply).
+    {{_HTTP, Code, Status}, _Headers, Reply} = Result,
+    case Reply of
+        <<>> -> {Code, Status};
+        _ -> {Code, json_decode(Reply)}
+    end.
+
 
 parse_config(ConfigPath) ->
     {ok, [Config]} = file:consult(ConfigPath),
-    io:format("Using config: ~p~n", [Config]),
     Config.
 
 parse_instances(Config) ->
@@ -63,7 +65,7 @@ parse_instances(Config) ->
 
 compose_uri_map(Method) ->
     {ok, Scheme} = application:get_env(braid, scheme),
-    {ok, Domain} = application:get_env(braid, domain),
+    {ok, Domain} = application:get_env(braid, braidnet_domain),
     {ok, Port} = application:get_env(braid, port),
     #{
         scheme => Scheme,
@@ -76,7 +78,7 @@ json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
 
 headers(Instance) ->
-    {ok, Token} = application:get_env(braid, token),
+    {ok, Token} = application:get_env(braid, braidnet_access_token),
     [
         {"Authorization", "Bearer " ++ Token},
         {"fly-force-instance-id", Instance}
