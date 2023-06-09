@@ -1,5 +1,11 @@
 # braid CLI
 
+Remember that the example fly configuration may not be compatible with your braidnet instances.
+
+Check that the machine ids exists and you are pointing to the correct fly app.
+
+## Instructions
+
 Launch and see node state on fly.io
 
     rebar3 escriptize
@@ -11,21 +17,31 @@ Launch and see node state on fly.io
 
 # braid_rest WIP
 
-Launch and see node state on fly.io
+## Instructions
 
+Use braid as rest lib, but rtemember to have the correct settings in place.
+
+* set a proper authentication token at `config/sys.config`
+* set `{braidnet_domain, "***"}` if your fly app is different from the default
+
+```
     rebar3 shell
 
     braid_rest:launch("examples/fly.io.config").
     braid_rest:list("braidnet-ams.fly.dev").
     braid_rest:logs("fly-instance-id", "container-id").
+```
 
+## Braid rest local testing requisites
 
-Launch from a local braidnet node
+To use the local shell example you need an up-to-date `"local/braidnode"` docker image.
+
+You can also change and use any image on your docker hub as you please.
+
 
     rebar3 as test shell
-
     braid_rest:launch("examples/shell.config").
-    braid_rest:list("localhost").
+
 
 
 # braid (old)
