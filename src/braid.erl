@@ -1,4 +1,5 @@
 -module(braid).
+-define(REQUIRED_OTP_VERSION, 22).
 
 -behaviour(cli).
 -export([main/1, cli/0]).
@@ -6,9 +7,8 @@
 -behaviour(application).
 -export([start/2, stop/1]).
 
--define(REQUIRED_OTP_VERSION, 22).
-
--include_lib("kernel/include/logger.hrl").
+-behaviour(provider).
+-export([init/1, do/1, format_error/1]).
 
 -export([
     launch/1,
@@ -18,6 +18,9 @@
     rpc/5,
     config/3
 ]).
+
+-include_lib("kernel/include/logger.hrl").
+
 
 % @doc Main CLI entry point.
 main(Args) ->
@@ -101,7 +104,8 @@ cli() ->
         }
     }.
 
-% CLI callbacks -––-------------------------------------------------------------
+
+% CLI callbacks ----------------------------------------------------------------
 
 launch(ConfigPath) ->
     braid_net:ensure(),
@@ -134,6 +138,22 @@ config(Type, Size, DockerImage) ->
         "mesh" -> braid_config:gen(mesh, DockerImage, N);
         "ring" -> braid_config:gen(ring, DockerImage, N)
     end.
+
+
+%--- Plugin callbacks-----------------------------------------------------------
+
+-spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
+init(State) ->
+    {ok, State}.
+
+-spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
+do(State) ->
+    {ok, State}.
+
+-spec format_error(any()) -> iolist().
+format_error(Reason) ->
+    io_lib:format("~p", [Reason]).
+
 
 %--- Internal ------------------------------------------------------------------
 

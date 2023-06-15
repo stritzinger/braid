@@ -1,8 +1,8 @@
 # braid CLI
 
-Remember that the example fly configuration may not be compatible with your braidnet instances.
+Remember that the example Fly.io configuration may not be compatible with your Braidnet instances.
 
-Check that the machine ids exists and you are pointing to the correct fly app.
+Check that the machine ids exists and you are pointing to the correct Fly app.
 
 ## Instructions
 
@@ -48,7 +48,29 @@ You can also change and use any image on your docker hub as you please.
     rebar3 as test shell
     braid_rest:launch("examples/shell.config").
 
+# Braidnode application template
 
+Braid as a rebar3 plugin can be used to generate a project template for building
+Braidnode applications.
+
+## Instructions
+Add braid as a plugin to your global rebar3 configuration file: `~/.config/rebar3/rebar.config`.
+
+For example:
+```erlang
+{plugins, [
+    {braid, {git, "https://github.com/stritzinger/braid.git", {branch, "braidnet"}}}
+]}.
+```
+
+Then, generate a new app:
+
+    $ rebar3 new braidnode_app <myapp>
+
+### A note on the builder image in the template rebar.config
+Braidnode applications are using a modified Erlang/OTP build that allows
+specifying a custom signing function for SSL handshakes.
+This is used to delegate signing, as well as private key handling, to Braidnet.
 
 # braid (old)
 

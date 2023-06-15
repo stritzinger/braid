@@ -1,0 +1,14 @@
+{description, "Creates a Braidnode application to be used on Braidnet"}.
+{variables, [
+    {name, "my_braidnode_app", "Name of the Braidnode OTP application"}
+  ]}.
+{template, "braidnode_app/src/.app.src", "{{name}}/src/{{name}}.app.src"}.
+{template, "braidnode_app/src/app.erl", "{{name}}/src/{{name}}_app.erl"}.
+{template, "braidnode_app/src/sup.erl", "{{name}}/src/{{name}}_sup.erl"}.
+{template, "braidnode_app/config/vm.args.src", "{{name}}/config/vm.args.src"}.
+{template, "braidnode_app/config/sys.config", "{{name}}/config/sys.config"}.
+{template, "braidnode_app/config/ssl_dist_opts.rel", "{{name}}/config/ssl_dist_opts.rel"}.
+{template, "braidnode_app/rebar.config", "{{name}}/rebar.config"}.
+{template, "braidnode_app/README.md", "{{name}}/README.md"}.
+{file, "braidnode_app/LICENSE.md", "{{name}}/LICENSE.md"}.
+{file, "braidnode_app/.gitignore", "{{name}}/.gitignore"}.

@@ -1,0 +1,16 @@
+{application, {{name}},
+ [{description, "A Braidnode OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {{{name}}_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    braidnode
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache-2.0"]},
+  {links, []}
+ ]}.
