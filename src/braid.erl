@@ -14,7 +14,8 @@
     launch/1,
     destroy/1,
     list/1,
-    logs/2
+    logs/2,
+    rpc/5
 ]).
 
 % @doc Main CLI entry point.
@@ -75,6 +76,17 @@ cli() ->
                     #{name => container, type => string, help => "id"}
                 ],
                 help => "Get a dump of all logs of a specific container"
+            },
+            "rpc" => #{
+                handler => {?MODULE, rpc, undefined},
+                arguments => [
+                    #{name => machine, type => string, help => "id"},
+                    #{name => container, type => string, help => "id"},
+                    #{name => module, type => atom, help => "module"},
+                    #{name => function, type => atom, help => "function"},
+                    #{name => args, type => string, help => "args"}
+                ],
+                help => "Execute an arbitrary RPC on a remote container"
             }
         }
     }.
@@ -101,6 +113,10 @@ logs(Machine, CID) ->
     {Code, Logs} = braid_rest:logs(Machine, CID),
     braid_cli:print("~p~n~s",[Code, Logs]).
 
+rpc(Machine, CID, M, F, A) ->
+    braid_net:ensure(),
+    Result = braid_rest:rpc(Machine, CID, M, F, A),
+    braid_cli:print("~p",[Result]).
 
 %--- Internal ------------------------------------------------------------------
 

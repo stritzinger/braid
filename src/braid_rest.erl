@@ -3,6 +3,7 @@
 -export([launch/1]).
 -export([list/1]).
 -export([logs/2]).
+-export([rpc/5]).
 -export([destroy/1]).
 
 % API --------------------------------------------------------------------------
@@ -21,6 +22,16 @@ list(ConfigPath) ->
 
 logs(Instance, CID) ->
     send_to_instance(get, Instance, "logs", [{"cid", CID}]).
+
+rpc(Instance, CID, M, F, A) ->
+    BinM = base64:encode(term_to_binary(M)),
+    BinF = base64:encode(term_to_binary(F)),
+    {ok, Tokens, _} = erl_scan:string(A ++ "."),
+    {ok, Term} = erl_parse:parse_term(Tokens),
+    io:format("Parsed term: ~p\n",[Term]),
+    BinArgs = base64:encode(term_to_binary(Term)),
+    QS = [{"cid", CID}, {"m", BinM}, {"f", BinF}, {"args", BinArgs}],
+    send_to_instance(get, Instance, "rpc", QS).
 
 destroy(ConfigPath) ->
     Config = parse_config(ConfigPath),
