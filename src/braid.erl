@@ -82,8 +82,8 @@ cli() ->
                 arguments => [
                     #{name => machine, type => string, help => "id"},
                     #{name => container, type => string, help => "id"},
-                    #{name => module, type => atom, help => "module"},
-                    #{name => function, type => atom, help => "function"},
+                    #{name => module, type => string, help => "module"},
+                    #{name => function, type => string, help => "function"},
                     #{name => args, type => string, help => "args"}
                 ],
                 help => "Execute an arbitrary RPC on a remote container"

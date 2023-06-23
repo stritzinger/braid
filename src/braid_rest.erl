@@ -24,14 +24,23 @@ logs(Instance, CID) ->
     send_to_instance(get, Instance, "logs", [{"cid", CID}]).
 
 rpc(Instance, CID, M, F, A) ->
-    BinM = base64:encode(term_to_binary(M)),
-    BinF = base64:encode(term_to_binary(F)),
+    BinM = base64:encode(term_to_binary(list_to_atom(M))),
+    BinF = base64:encode(term_to_binary(list_to_atom(F))),
     {ok, Tokens, _} = erl_scan:string(A ++ "."),
     {ok, Term} = erl_parse:parse_term(Tokens),
     io:format("Parsed term: ~p\n",[Term]),
     BinArgs = base64:encode(term_to_binary(Term)),
     QS = [{"cid", CID}, {"m", BinM}, {"f", BinF}, {"args", BinArgs}],
-    send_to_instance(get, Instance, "rpc", QS).
+    {Code, Result} = send_to_instance(get, Instance, "rpc", QS),
+    Msg = case Code of
+        200 ->
+            case is_binary(Result) of
+                true -> base64:decode(Result);
+                false -> Result
+            end;
+        _ -> Result
+    end,
+    {Code, Msg}.
 
 destroy(ConfigPath) ->
     Config = parse_config(ConfigPath),
@@ -70,9 +79,7 @@ parse_config(ConfigPath) ->
     Config.
 
 parse_instances(Config) ->
-    [ begin
-        atom_to_binary(Orchestrator)
-    end || {Orchestrator, _Nodes} <- maps:to_list(Config)].
+    [Orchestrator || {Orchestrator, _Nodes} <- maps:to_list(Config)].
 
 compose_uri_map(Method) ->
     {ok, Scheme} = application:get_env(braid, scheme),
