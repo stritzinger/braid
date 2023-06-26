@@ -96,6 +96,8 @@ compose_uri_map(Method) ->
 json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
 
+headers(Instance) when is_atom(Instance) ->
+    headers(atom_to_list(Instance));
 headers(Instance) ->
     {ok, Token} = application:get_env(braid, braidnet_access_token),
     [
