@@ -8,14 +8,14 @@
 
 % API --------------------------------------------------------------------------
 
-launch(ConfigPath) ->
-    Config = parse_config(ConfigPath),
+launch(ConfigOrPath) ->
+    Config = parse_config(ConfigOrPath),
     Orchestrators = parse_instances(Config),
     [{Orch, send_to_instance(post, Orch, "launch", Config)} ||
         Orch <- Orchestrators].
 
-list(ConfigPath) ->
-    Config = parse_config(ConfigPath),
+list(ConfigOrPath) ->
+    Config = parse_config(ConfigOrPath),
     Orchestrators = parse_instances(Config),
     [{Orch, send_to_instance(get, Orch, "list", [])} ||
         Orch <- Orchestrators].
@@ -42,8 +42,8 @@ rpc(Instance, CID, M, F, A) ->
     end,
     {Code, Msg}.
 
-destroy(ConfigPath) ->
-    Config = parse_config(ConfigPath),
+destroy(ConfigOrPath) ->
+    Config = parse_config(ConfigOrPath),
     Orchestrators = parse_instances(Config),
     [{Orch, send_to_instance(delete, Orch, "destroy", Config)} ||
         Orch <- Orchestrators].
@@ -73,9 +73,10 @@ send_to_instance(Method, Instance, API, Message) ->
         _ -> {Code, json_decode(Reply)}
     end.
 
-
-parse_config(ConfigPath) ->
-    {ok, [Config]} = file:consult(ConfigPath),
+parse_config(Config) when is_map(Config) ->
+    Config;
+parse_config(Path) ->
+    {ok, [Config]} = file:consult(Path),
     Config.
 
 parse_instances(Config) ->
