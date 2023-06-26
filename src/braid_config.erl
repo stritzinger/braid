@@ -3,33 +3,23 @@
 
 -export([fly_machines/0]).
 -export([fully_connected_mesh/2]).
--export([fully_connected_mesh/3]).
 -export([ring/2]).
 
 -include_lib("stdlib/include/assert.hrl").
 
-
-% Where containers start taking port numbers
--define(BASE_PORT_N, 40_000).
-
-
 fully_connected_mesh(DockerImage, Size) ->
-    fully_connected_mesh(DockerImage, Size, ?BASE_PORT_N).
-
-fully_connected_mesh(DockerImage, Size, BasePort) ->
     Machines = fly_machines(),
     Sizes = divide_sizes_with_reminder(Size, length(Machines)),
-    ParamsList = [{DockerImage, S, M, BasePort} || {S,M} <- lists:zip(Sizes, Machines)],
+    ParamsList = [{DockerImage, S, M} || {S,M} <- lists:zip(Sizes, Machines)],
     Configs = gen_containers_configs(ParamsList),
     Configs2 = interconnect_all_containers(Configs),
     CfgMap = maps:from_list([{M, maps:from_list(Cts)} || {M, Cts} <- Configs2]),
     ok = file:write_file("examples/mesh.config", io_lib:format("~p.~n", [CfgMap])).
 
-
 ring(DockerImage, Size) ->
     Machines = fly_machines(),
     Sizes = divide_sizes_with_reminder(Size, length(Machines)),
-    ParamsList = [{DockerImage, S, M, ?BASE_PORT_N} || {S,M} <- lists:zip(Sizes, Machines)],
+    ParamsList = [{DockerImage, S, M} || {S,M} <- lists:zip(Sizes, Machines)],
     Configs = gen_containers_configs(ParamsList),
     Configs2 = chain_all_containers(Configs),
     CfgMap = maps:from_list([{M, maps:from_list(Cts)} || {M, Cts} <- Configs2]),
@@ -54,19 +44,18 @@ gen_containers_configs(ParamsList) ->
     do_gen_containers_configs(ParamsList, []).
 
 do_gen_containers_configs([], Configs) -> Configs;
-do_gen_containers_configs([{Img,Count,M,P} | Rest], Configs) ->
-    do_gen_containers_configs(Rest, [{M, containers_configs(Img,Count,P)} | Configs]).
+do_gen_containers_configs([{Img,Count,M} | Rest], Configs) ->
+    do_gen_containers_configs(Rest, [{M, containers_configs(Img,Count)} | Configs]).
 
-containers_configs(Image, Count, BasePortN) ->
-    L = lists:seq(BasePortN + 1, BasePortN + Count),
-    [container(Image, PortN) || PortN <- L].
+containers_configs(Image, Count) ->
+    L = lists:seq(1, Count),
+    [container(Image) || _ <- L].
 
-container(Image, PortN) ->
+container(Image) ->
     Name = list_to_binary(get_random_string(6,"abcdefghilmnopqrstuvzkxwy")),
     {Name,
         #{
             image => Image,
-            epmd_port => integer_to_binary(PortN),
             connections => []
         }
     }.
