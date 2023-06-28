@@ -15,7 +15,8 @@
     destroy/1,
     list/1,
     logs/2,
-    rpc/5
+    rpc/5,
+    config/3
 ]).
 
 % @doc Main CLI entry point.
@@ -87,6 +88,15 @@ cli() ->
                     #{name => args, type => string, help => "args"}
                 ],
                 help => "Execute an arbitrary RPC on a remote container"
+            },
+            "config" => #{
+                handler => {?MODULE, config, undefined},
+                arguments => [
+                    #{name => type, type => string, help => "mesh type"},
+                    #{name => size, type => string, help => "size"},
+                    #{name => image, type => binary, help => "docker image"}
+                ],
+                help => "Generates a testing braid config with various options"
             }
         }
     }.
@@ -117,6 +127,13 @@ rpc(Machine, CID, M, F, A) ->
     braid_net:ensure(),
     Result = braid_rest:rpc(Machine, CID, M, F, A),
     braid_cli:print("~p",[Result]).
+
+config(Type, Size, DockerImage) ->
+    N = list_to_integer(Size),
+    case Type of
+        "mesh" -> braid_config:gen(mesh, DockerImage, N);
+        "ring" -> braid_config:gen(ring, DockerImage, N)
+    end.
 
 %--- Internal ------------------------------------------------------------------
 

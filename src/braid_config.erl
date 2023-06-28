@@ -1,11 +1,10 @@
 % This is an utility module for easy generation of example configurations taylored on fly.io
 -module(braid_config).
 
--export([fly_machines/0]).
--export([fully_connected_mesh/2]).
--export([ring/2]).
+-export([gen/3]).
 
--include_lib("stdlib/include/assert.hrl").
+gen(mesh, DockerImage, Size) -> fully_connected_mesh(DockerImage, Size);
+gen(ring, DockerImage, Size) -> ring(DockerImage, Size).
 
 fully_connected_mesh(DockerImage, Size) ->
     Machines = fly_machines(),
@@ -14,7 +13,7 @@ fully_connected_mesh(DockerImage, Size) ->
     Configs = gen_containers_configs(ParamsList),
     Configs2 = interconnect_all_containers(Configs),
     CfgMap = maps:from_list([{M, maps:from_list(Cts)} || {M, Cts} <- Configs2]),
-    ok = file:write_file("examples/mesh.config", io_lib:format("~p.~n", [CfgMap])).
+    ok = file:write_file("mesh.config", io_lib:format("~p.~n", [CfgMap])).
 
 ring(DockerImage, Size) ->
     Machines = fly_machines(),
@@ -23,7 +22,7 @@ ring(DockerImage, Size) ->
     Configs = gen_containers_configs(ParamsList),
     Configs2 = chain_all_containers(Configs),
     CfgMap = maps:from_list([{M, maps:from_list(Cts)} || {M, Cts} <- Configs2]),
-    ok = file:write_file("examples/mesh.config", io_lib:format("~p.~n", [CfgMap])).
+    ok = file:write_file("ring.config", io_lib:format("~p.~n", [CfgMap])).
 
 fly_machines() ->
     {ok, Domain} = application:get_env(braid, braidnet_domain),
