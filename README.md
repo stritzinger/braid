@@ -6,12 +6,18 @@ Check that the machine ids exists and you are pointing to the correct fly app.
 
 ## Instructions
 
-Launch and see node state on fly.io
+Generate a configuration based on the available braidnet machines
 
     rebar3 escriptize
     ./_build/default/bin/braid setup
-    ./_build/default/bin/braid launch examples/fly.io.config
-    ./_build/default/bin/braid list examples/fly.io.config
+    ./_build/default/bin/braid config ring 4 my-image:tag
+
+Launch and see node state on fly.io
+
+    rebar3 escriptize
+    ./_build/default/bin/braid launch mesh.config
+    ./_build/default/bin/braid logs ...
+    ./_build/default/bin/braid rpc ...
     ...
 
 
