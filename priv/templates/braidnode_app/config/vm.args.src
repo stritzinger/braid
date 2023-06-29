@@ -1,0 +1,6 @@
+-sname ${NODE_NAME}@${NODE_HOST}
+-setcookie cookie
+
+-proto_dist inet6_tls
+-epmd_module braidnode_epmd
+-ssl_dist_optfile "config/ssl_dist_opts.rel"
