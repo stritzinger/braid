@@ -1,71 +1,148 @@
-% @doc Helper functions for CLI.
 -module(braid_cli).
+-define(REQUIRED_OTP_VERSION, 22).
 
-% API
--export([abort/2]).
--export([print/1]).
--export([print/2]).
--export([input/1]).
--export([confirm/1]).
+-behaviour(cli).
+-export([main/1, cli/0]).
 
-% Callbacks
--export([format/2]).
+-export([
+    launch/1,
+    destroy/1,
+    list/1,
+    logs/2,
+    rpc/5,
+    config/3
+]).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(YES, "^[Yy]([Ee][Ss])?$").
 
-%--- API -----------------------------------------------------------------------
-
-abort(Format, Args) ->
-    io:format("~s~n", [color:red(io_lib:format(Format, Args))]),
-    erlang:halt(1).
-
-print(Text) -> print(Text, []).
-print(Format, Args) ->
-    io:format(Format ++ "~n", Args).
-
-input(Prompt) ->
-    case io:get_line(Prompt ++ " ") of
-        eof ->
-            "";
-        {error, Reason} ->
-            abort("Error reading input: ~p", [Reason]);
-        Data ->
-            re:replace(Data, "^[[:space:]]*+|[[:space:]]*+$", <<>>,
-                [global, {return, binary}]
-            )
+% @doc Main CLI entry point.
+main(Args) ->
+    check_otp_version(?REQUIRED_OTP_VERSION),
+    {ok, _} = application:ensure_all_started(braid),
+    try
+        cli:run(Args, #{
+            progname => ?MODULE,
+            modules => [?MODULE, braid_net],
+            warn => false
+        })
+    catch
+        Class:Reason:Stacktrace ->
+            cli_abort(Class, Reason, Stacktrace)
+    after
+        braid_table:close(),
+        application:stop(braid)
     end.
 
-confirm(Prompt) ->
-    case re:run(input(Prompt), ?YES, [{capture, none}]) of
-        match -> true;
-        _     -> false
-    end.
 
-%--- Callbacks -----------------------------------------------------------------
 
-format(Event, _Config) ->
+cli() ->
     #{
-        level := Level,
-        meta := #{
-            mfa := {Module, Function, Arity},
-            time := Time
+        %handler => {?MODULE, about},
+        commands => #{
+            "launch" => #{
+                handler => {?MODULE, launch, undefined},
+                arguments => [
+                    #{name => config, type => string, help => "path to file"}
+                ],
+                help => "Launch a new braidnet config spanning multiple machines"
+            },
+            "destroy" => #{
+                handler => {?MODULE, destroy, undefined},
+                arguments => [
+                    #{name => config, type => string, help => "path to file"}
+                ],
+                help => "Destroy all resources listed in the config"
+            },
+            "list" => #{
+                handler => {?MODULE, list, undefined},
+                arguments => [
+                    #{name => config, type => string, help => "path to file"}
+                ],
+                help => "Get info about all resources listed in the config"
+            },
+            "logs" => #{
+                handler => {?MODULE, logs, undefined},
+                arguments => [
+                    #{name => machine, type => string, help => "id"},
+                    #{name => container, type => string, help => "id"}
+                ],
+                help => "Get a dump of all logs of a specific container"
+            },
+            "rpc" => #{
+                handler => {?MODULE, rpc, undefined},
+                arguments => [
+                    #{name => machine, type => string, help => "id"},
+                    #{name => container, type => string, help => "id"},
+                    #{name => module, type => string, help => "module"},
+                    #{name => function, type => string, help => "function"},
+                    #{name => args, type => string, help => "args"}
+                ],
+                help => "Execute an arbitrary RPC on a remote container"
+            },
+            "config" => #{
+                handler => {?MODULE, config, undefined},
+                arguments => [
+                    #{name => type, type => string, help => "mesh type"},
+                    #{name => size, type => string, help => "size"},
+                    #{name => image, type => binary, help => "docker image"}
+                ],
+                help => "Generates a testing braid config with various options"
+            }
         }
-    } = Event,
-    io:format("~p~n", [Event]),
-    Timestamp = calendar:system_time_to_rfc3339(
-        erlang:convert_time_unit(Time, microsecond, millisecond),
-        [{unit, millisecond}, {time_designator, $\s}, {offset, "Z"}]
-    ),
-    io_lib:format("~s ~s ~p:~p/~b~n", [
-        Timestamp,
-        format_level(Level),
-        Module, Function, Arity
-    ]).
+    }.
 
-format_level(Level) ->
-    format_level(Level, string:uppercase(atom_to_binary(Level))).
 
-format_level(debug, String) -> color:on_cyan([<<"[">>, String, <<"]">>]);
-format_level(_Level, String) -> String.
+% CLI callbacks ----------------------------------------------------------------
+
+launch(ConfigPath) ->
+    braid_net:ensure(),
+    Results = braid_rest:launch(ConfigPath),
+    [braid_cli_util:print("~p",[R]) || R <- Results].
+
+destroy(ConfigPath) ->
+    braid_net:ensure(),
+    Results = braid_rest:destroy(ConfigPath),
+    [braid_cli_util:print("~p",[R]) || R <- Results].
+
+list(ConfigPath) ->
+    braid_net:ensure(),
+    Results = braid_rest:list(ConfigPath),
+    [braid_cli_util:print("~p",[R]) || R <- Results].
+
+logs(Machine, CID) ->
+    braid_net:ensure(),
+    {Code, Logs} = braid_rest:logs(Machine, CID),
+    braid_cli_util:print("~p~n~s",[Code, Logs]).
+
+rpc(Machine, CID, M, F, A) ->
+    braid_net:ensure(),
+    Result = braid_rest:rpc(Machine, CID, M, F, A),
+    braid_cli_util:print("~p",[Result]).
+
+config(Type, Size, DockerImage) ->
+    braid_net:ensure(),
+    N = list_to_integer(Size),
+    case Type of
+        "mesh" -> braid_config:gen(mesh, DockerImage, N);
+        "ring" -> braid_config:gen(ring, DockerImage, N)
+    end.
+
+%--- Internal ------------------------------------------------------------------
+
+check_otp_version(Version) ->
+    check_otp_version(
+        Version,
+        list_to_integer(erlang:system_info(otp_release))
+    ).
+
+check_otp_version(Desired, Actual) when Desired > Actual ->
+    braid_cli_util:abort("OTP version ~p too old. At least ~p required.", [
+        Actual,
+        Desired
+    ]);
+check_otp_version(_, _) ->
+    ok.
+
+cli_abort(Class, Reason, Stacktrace) ->
+    erlang:raise(Class, Reason, Stacktrace).

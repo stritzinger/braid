@@ -1,5 +1,6 @@
 -module(braid_rest).
 
+-export([instances/0]).
 -export([launch/1]).
 -export([list/1]).
 -export([logs/2]).
@@ -7,11 +8,14 @@
 -export([destroy/1]).
 
 % API --------------------------------------------------------------------------
+%
+instances() ->
+    send_to_instance(get, undefined, "instances", []).
 
 launch(ConfigOrPath) ->
     Config = parse_config(ConfigOrPath),
     Orchestrators = parse_instances(Config),
-    [{Orch, send_to_instance(post, Orch, "launch", Config)} ||
+    [{Orch, send_to_instance(post, Orch, "launch", "")} ||
         Orch <- Orchestrators].
 
 list(ConfigOrPath) ->
@@ -96,6 +100,11 @@ compose_uri_map(Method) ->
 json_decode(JSON) ->
     jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
 
+headers(undefined) ->
+    {ok, Token} = application:get_env(braid, braidnet_access_token),
+    [
+        {"Authorization", "Bearer " ++ Token}
+    ];
 headers(Instance) when is_atom(Instance) ->
     headers(atom_to_list(Instance));
 headers(Instance) ->
@@ -105,12 +114,12 @@ headers(Instance) ->
         {"fly-force-instance-id", Instance}
     ].
 
-
 http_opts() ->
     {ok, Scheme} = application:get_env(braid, scheme),
     case Scheme of
         "https" ->
             [
+                {timeout, 10_000},
                 {ssl, [
                     {verify, verify_peer},
                     {cacerts, certifi:cacerts()},

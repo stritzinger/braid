@@ -2,7 +2,7 @@
  [{description, "An OTP library"},
   {vsn, "0.0.1"},
   {registered, []},
-  {mod, {braid, []}},
+  {mod, {braid_app, []}},
   {applications,
    [kernel,
     stdlib,
@@ -19,7 +19,6 @@
    ]},
   {env,[
     {scheme, "https"},
-    {braidnet_domain, "braidnet.fly.dev"},
     {port, 443}
   ]},
   {modules, []},

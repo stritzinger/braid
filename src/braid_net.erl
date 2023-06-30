@@ -62,8 +62,8 @@ check(#setting{name = Name, title = Title, description = Description}) ->
 check(Token, Name, Text) ->
     case braid_table:find(?MODULE, Token) of
         {ok, Value} ->
-            braid_cli:print("~s:\n    ~s", [Name, Value]),
-            case braid_cli:confirm("Do you want to replace it? [y/N]:") of
+            braid_cli_util:print("~s:\n    ~s", [Name, Value]),
+            case braid_cli_util:confirm("Do you want to replace it? [y/N]:") of
                 true  -> aquire(Token, Name, Text);
                 false -> ok
             end;
@@ -72,8 +72,8 @@ check(Token, Name, Text) ->
     end.
 
 aquire(Token, Name, Text) ->
-    braid_cli:print(Text),
-    Value = braid_cli:input(Name ++ ":"),
+    braid_cli_util:print(Text),
+    Value = braid_cli_util:input(Name ++ ":"),
     braid_table:set(?MODULE, Token, Value).
 
 ensure(#setting{name = Name, title = Title}) ->
@@ -82,7 +82,7 @@ ensure(#setting{name = Name, title = Title}) ->
             application:set_env(braid, Name, Val),
             ok;
         error ->
-            braid_cli:abort(
+            braid_cli_util:abort(
                 "~s is missing. Please run:\n\n"
                 "    braid setup\n"
             , [Title]),

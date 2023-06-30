@@ -25,14 +25,8 @@ ring(DockerImage, Size) ->
     ok = file:write_file("ring.config", io_lib:format("~p.~n", [CfgMap])).
 
 fly_machines() ->
-    {ok, Domain} = application:get_env(braid, braidnet_domain),
-    [AppName | _] = string:split(Domain, ".", all),
-    Ret = os:cmd("fly machine list -a " ++  AppName ++ " -j"),
-    Machines = json_decode(list_to_binary(Ret)),
-    [ID || #{<<"id">> := ID} <- Machines].
-
-json_decode(JSON) ->
-    jsx:decode(JSON, [{return_maps, true},{labels, binary}]).
+    {200, Machines} = braid_rest:instances(),
+    Machines.
 
 divide_sizes_with_reminder(Total, BucketCount) ->
     Buckets = lists:seq(1, BucketCount, 1),

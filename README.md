@@ -1,80 +1,60 @@
-# braid CLI
+# braid
 
-Remember that the example Fly.io configuration may not be compatible with your Braidnet instances.
+### braid_cli.erl
+Braid is a cli application as well as a client library to interface with running [Braidnet](https://github.com/stritzinger/braidnode) instances in the cloud.
 
-Check that the machine ids exists and you are pointing to the correct Fly app.
+Currently we only support braidnet on fly.io, but in future, different cloud providers might be added.
 
-## Instructions
+### braid.erl
 
-Generate a configuration based on the available braidnet machines
+This project contains a single module library that acts locally using the OPT slave application.
+
+## Use it as a CLI for your braidnet cloud
+
+The CLI is the fastest way to use this client, generate the escript and use the setup command.
+
+- braidnet domain (e.g. `braidnet.fly.dev`)
+- the authenticaiton token used in REST requests
+
+```
+    rebar3 escriptize
+    ./_build/default/bin/braidclient setup
+````
+
+Once your braidnet clould is online on Fly.io, you can generate a braidnet config.
+We currently only have a `mesh` and `ring` setups with arbitrary scale.
 
     rebar3 escriptize
-    ./_build/default/bin/braid setup
-    ./_build/default/bin/braid config ring 4 my-image:tag
-
-Launch and see node state on fly.io
-
-    rebar3 escriptize
-    ./_build/default/bin/braid launch mesh.config
-    ./_build/default/bin/braid logs ...
-    ./_build/default/bin/braid rpc ...
+    ./_build/default/bin/braidclient config ring 4 my-hub/my-image:tag
+    ./_build/default/bin/braidclient launch ring.config
+    ./_build/default/bin/braidclient list ...
+    ./_build/default/bin/braidclient logs ...
+    ./_build/default/bin/braidclient rpc ...
     ...
 
 
-# braid_rest WIP
+## braid app as a library
 
-## Instructions
+You can use braid as library to integrate its functionalities in you own client.
+Just take a look at the configuration file. You need to provide the correct entries as app env.
 
-Use braid as rest lib, but rtemember to have the correct settings in place.
+* set your braidnet domain env `{braidnet_domain, "***"}`
+* set a proper authentication token env ` {braidnet_access_token, <<"***">>}`
 
-* set a proper authentication token at `config/sys.config`
-* set `{braidnet_domain, "***"}` if your fly app is different from the default
+You can also test this on the shell:
 
 ```
     rebar3 shell
-
-    braid_rest:launch("examples/fly.io.config").
-    braid_rest:list("braidnet-ams.fly.dev").
-    braid_rest:logs("fly-instance-id", "container-id").
+    braid_config:gen(mesh, "my-hub/my-image:tag", 4).
+    braid_rest:launch("mesh.config").
+    braid_rest:list("mesh.config").
+    ...
 ```
 
-## Braid rest local testing requisites
 
-To use the local shell example you need an up-to-date `"local/braidnode"` docker image.
+# braid module
 
-You can also change and use any image on your docker hub as you please.
-
-
-    rebar3 as test shell
-    braid_rest:launch("examples/shell.config").
-
-# Braidnode application template
-
-Braid as a rebar3 plugin can be used to generate a project template for building
-Braidnode applications.
-
-## Instructions
-Add braid as a plugin to your global rebar3 configuration file: `~/.config/rebar3/rebar.config`.
-
-For example:
-```erlang
-{plugins, [
-    {braid, {git, "https://github.com/stritzinger/braid.git", {branch, "braidnet"}}}
-]}.
-```
-
-Then, generate a new app:
-
-    $ rebar3 new braidnode_app <myapp>
-
-### A note on the builder image in the template rebar.config
-Braidnode applications are using a modified Erlang/OTP build that allows
-specifying a custom signing function for SSL handshakes.
-This is used to delegate signing, as well as private key handling, to Braidnet.
-
-# braid (old)
-
-Braid is an Erlang library to create and connect an arbitrary cluster of nodes.
+`braid.erl` is an Erlang library to create and connect an arbitrary cluster of nodes.
 The library is intended to be used for testing. It works in a similar mode to
 `slave`, where nodes set up through the library are linked to the process
 creating the cluster. Once that process terminates, all the nodes are cleaned
