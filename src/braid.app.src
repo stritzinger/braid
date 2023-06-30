@@ -2,11 +2,25 @@
  [{description, "An OTP library"},
   {vsn, "0.0.1"},
   {registered, []},
+  {mod, {braid_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    % legacy braid
+    mapz,
+    % cli
+    argparse,
+    color,
+    % rest client
+    jsx,
+    certifi,
+    inets,
+    ssl
    ]},
-  {env,[]},
+  {env,[
+    {scheme, "https"},
+    {port, 443}
+  ]},
   {modules, []},
 
   {licenses, ["Apache 2.0"]},

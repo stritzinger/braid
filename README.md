@@ -1,6 +1,60 @@
 # braid
 
-Braid is an Erlang library to create and connect an arbitrary cluster of nodes.
+### braid_cli.erl
+Braid is a cli application as well as a client library to interface with running [Braidnet](https://github.com/stritzinger/braidnode) instances in the cloud.
+
+Currently we only support braidnet on fly.io, but in future, different cloud providers might be added.
+
+### braid.erl
+
+This project contains a single module library that acts locally using the OPT slave application.
+
+## Use it as a CLI for your braidnet cloud
+
+The CLI is the fastest way to use this client, generate the escript and use the setup command.
+
+- braidnet domain (e.g. `braidnet.fly.dev`)
+- the authenticaiton token used in REST requests
+
+```
+    rebar3 escriptize
+    ./_build/default/bin/braidclient setup
+````
+
+Once your braidnet clould is online on Fly.io, you can generate a braidnet config.
+We currently only have a `mesh` and `ring` setups with arbitrary scale.
+
+    rebar3 escriptize
+    ./_build/default/bin/braidclient config ring 4 my-hub/my-image:tag
+    ./_build/default/bin/braidclient launch ring.config
+    ./_build/default/bin/braidclient list ...
+    ./_build/default/bin/braidclient logs ...
+    ./_build/default/bin/braidclient rpc ...
+    ...
+
+
+## braid app as a library
+
+You can use braid as library to integrate its functionalities in you own client.
+Just take a look at the configuration file. You need to provide the correct entries as app env.
+
+* set your braidnet domain env `{braidnet_domain, "***"}`
+* set a proper authentication token env ` {braidnet_access_token, <<"***">>}`
+
+You can also test this on the shell:
+
+```
+    rebar3 shell
+    braid_config:gen(mesh, "my-hub/my-image:tag", 4).
+    braid_rest:launch("mesh.config").
+    braid_rest:list("mesh.config").
+    ...
+```
+
+
+# braid module
+
+`braid.erl` is an Erlang library to create and connect an arbitrary cluster of nodes.
 The library is intended to be used for testing. It works in a similar mode to
 `slave`, where nodes set up through the library are linked to the process
 creating the cluster. Once that process terminates, all the nodes are cleaned

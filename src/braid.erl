@@ -2,6 +2,8 @@
 
 -behavior(gen_server).
 
+-export([main/1]).
+
 % API
 -export([create/1]).
 -export([info/2]).
@@ -19,6 +21,8 @@
 -export([handle_call/3]).
 -export([handle_cast/2]).
 -export([handle_info/2]).
+
+main(Args) -> braid_cli:main(Args).
 
 %--- API -----------------------------------------------------------------------
 
