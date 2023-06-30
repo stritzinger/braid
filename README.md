@@ -1,7 +1,7 @@
 # braid
 
 ### braid_cli.erl
-Braid is a cli application as well as a client library to interface with running [Braidnet](https://github.com/stritzinger/braidnode) instances in the cloud.
+Braid is a cli application as well as a client library to interface with running [braidnet](https://github.com/stritzinger/braidnode) instances in the cloud.
 
 Currently we only support braidnet on fly.io, but in future, different cloud providers might be added.
 
@@ -18,18 +18,18 @@ The CLI is the fastest way to use this client, generate the escript and use the 
 
 ```
     rebar3 escriptize
-    ./_build/default/bin/braidclient setup
+    ./_build/default/bin/braid setup
 ````
 
 Once your braidnet clould is online on Fly.io, you can generate a braidnet config.
 We currently only have a `mesh` and `ring` setups with arbitrary scale.
 
     rebar3 escriptize
-    ./_build/default/bin/braidclient config ring 4 my-hub/my-image:tag
-    ./_build/default/bin/braidclient launch ring.config
-    ./_build/default/bin/braidclient list ...
-    ./_build/default/bin/braidclient logs ...
-    ./_build/default/bin/braidclient rpc ...
+    ./_build/default/bin/braid config ring 4 my-hub/my-image:tag
+    ./_build/default/bin/braid launch ring.config
+    ./_build/default/bin/braid list ...
+    ./_build/default/bin/braid logs ...
+    ./_build/default/bin/braid rpc ...
     ...
 
 
