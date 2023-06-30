@@ -15,7 +15,7 @@ instances() ->
 launch(ConfigOrPath) ->
     Config = parse_config(ConfigOrPath),
     Orchestrators = parse_instances(Config),
-    [{Orch, send_to_instance(post, Orch, "launch", "")} ||
+    [{Orch, send_to_instance(post, Orch, "launch", Config)} ||
         Orch <- Orchestrators].
 
 list(ConfigOrPath) ->
@@ -67,7 +67,6 @@ send_to_instance(Method, Instance, API, Message) ->
             Body = jsx:encode(Message),
             {uri_string:recompose(URIMap), H, ContentType, Body}
     end,
-    % io:format("sending ~p\n",[Request]),
     {ok, Result} = httpc:request(Method, Request,
                                  http_opts(),
                                  [{body_format, binary}]),
@@ -84,7 +83,7 @@ parse_config(Path) ->
     Config.
 
 parse_instances(Config) ->
-    [Orchestrator || {Orchestrator, _Nodes} <- maps:to_list(Config)].
+    maps:keys(Config).
 
 compose_uri_map(Method) ->
     {ok, Scheme} = application:get_env(braid, scheme),
