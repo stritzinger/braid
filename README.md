@@ -1,7 +1,7 @@
 # braid
 
 ### braid_cli.erl
-Braid is a cli application as well as a client library to interface with running [braidnet](https://github.com/stritzinger/braidnode) instances in the cloud.
+Braid is a cli application as well as a client library to interface with running [braidnet](https://github.com/stritzinger/braidnet) instances in the cloud.
 
 Currently we only support braidnet on fly.io, but in future, different cloud providers might be added.
 
