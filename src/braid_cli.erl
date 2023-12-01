@@ -125,7 +125,8 @@ config(Type, Size, DockerImage) ->
     N = list_to_integer(Size),
     case Type of
         "mesh" -> braid_config:gen(mesh, DockerImage, N);
-        "ring" -> braid_config:gen(ring, DockerImage, N)
+        "ring" -> braid_config:gen(ring, DockerImage, N);    
+        "hypercube" -> braid_config:gen(hypercube, DockerImage, N)
     end.
 
 %--- Internal ------------------------------------------------------------------
