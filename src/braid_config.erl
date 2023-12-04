@@ -136,15 +136,30 @@ index_to_string(Integer) ->
 gen_hypercube_containers(Image, Machines, Hypercube) ->
     Sizes = divide_sizes_with_reminder(length(Hypercube), length(Machines)),
     Occupancy = lists:zip(Sizes, Machines),
-    rec_hypercube_containers(Image, Occupancy, Hypercube, #{}).
+    % ContainerToMachine = map_machine_to_container(),
+    rec_hypercube_containers(Image, Occupancy, Hypercube, #{}, []).
 
-rec_hypercube_containers(_, [], [], Config) -> Config;
-rec_hypercube_containers(Image, [{Quantity, Machine} | Others], Hypercube, Config) ->
+rec_hypercube_containers(Image, [], [], N2M, MachineConfigs) -> 
+    maps:from_list([
+        {M,
+         maps:from_list([
+            {Name, 
+                #{
+                    image => Image,
+                    connections => [iolist_to_binary([N, "@", maps:get(N, N2M)]) 
+                                        || N <- Conns]
+                }
+            } 
+                || {Name, Conns} <- Containers])
+        }
+        || {M, Containers} <- MachineConfigs]);
+rec_hypercube_containers(Image, [{Quantity, Machine} | Others], 
+                         Hypercube, N2M, Cfg) ->
     {ToMachine, Rest} = lists:split(Quantity, Hypercube),
-    Containers = [{list_to_binary(Name),
-                         #{connections => [iolist_to_binary([C, "@", Machine])
-                                            || C <- Connections],
-                           image => Image}}
-                || {Name, Connections} <- ToMachine],
-    NewConfig = Config#{Machine => maps:from_list(Containers)},
-    rec_hypercube_containers(Image, Others, Rest, NewConfig).
+    NewN2M = maps:from_list([{N, Machine} || {N,_} <- ToMachine]),
+    Containers = [{list_to_binary(Name), Connections}
+                    || {Name, Connections} <- ToMachine],
+    NewCfg = [{Machine, Containers} | Cfg],
+    rec_hypercube_containers(Image, Others, Rest, maps:merge(NewN2M, N2M), NewCfg).
+
+    
