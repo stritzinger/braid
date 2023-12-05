@@ -28,9 +28,7 @@ ring(DockerImage, Size) ->
 hypercube(DockerImage, N) ->
     Machines = fly_machines(),
     Vertices = gen_hypercube_vertices(N),
-    % io:format("~p~n", [Vertices]),
     Hypercube = connect_hypercube_vertices(N, Vertices),
-    % io:format("~p~n", [Hypercube]),
     FormattedHypercube = hypercube_to_string(Hypercube),
     CfgMap = gen_hypercube_containers(DockerImage, Machines, FormattedHypercube),
     ok = file:write_file("hypercube.config", io_lib:format("~p.~n", [CfgMap])).
@@ -116,13 +114,10 @@ gen_hypercube_vertices(N) ->
 
 connect_hypercube_vertices(N, Vertices) ->
     Masks = [round(math:pow(2, E)) || E <- lists:seq(0, N - 1)],
-    % io:format("Masks: ~p\n",[Masks]),
     [{V, find_neighbours(V, Masks)} || V <- Vertices].
 
 find_neighbours(Vertex, Masks) ->
-    Neighbours = [Vertex bxor M || M <- Masks],
-    % io:format("Neighbours of ~p : ~p\n",[Vertex, Neighbours]),
-    Neighbours.
+    [Vertex bxor M || M <- Masks].
 
 hypercube_to_string(Hypercube) ->
     [vertex_to_string(VE) ||VE <- Hypercube].
@@ -136,7 +131,6 @@ index_to_string(Integer) ->
 gen_hypercube_containers(Image, Machines, Hypercube) ->
     Sizes = divide_sizes_with_reminder(length(Hypercube), length(Machines)),
     Occupancy = lists:zip(Sizes, Machines),
-    % ContainerToMachine = map_machine_to_container(),
     rec_hypercube_containers(Image, Occupancy, Hypercube, #{}, []).
 
 rec_hypercube_containers(Image, [], [], N2M, MachineConfigs) -> 
@@ -161,5 +155,3 @@ rec_hypercube_containers(Image, [{Quantity, Machine} | Others],
                     || {Name, Connections} <- ToMachine],
     NewCfg = [{Machine, Containers} | Cfg],
     rec_hypercube_containers(Image, Others, Rest, maps:merge(NewN2M, N2M), NewCfg).
-
-    
