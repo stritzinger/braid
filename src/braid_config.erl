@@ -4,7 +4,8 @@
 -export([gen/3]).
 
 gen(mesh, DockerImage, Size) -> fully_connected_mesh(DockerImage, Size);
-gen(ring, DockerImage, Size) -> ring(DockerImage, Size).
+gen(ring, DockerImage, Size) -> ring(DockerImage, Size);
+gen(hypercube, DockerImage, N) -> hypercube(DockerImage, N).
 
 fully_connected_mesh(DockerImage, Size) ->
     Machines = fly_machines(),
@@ -23,6 +24,14 @@ ring(DockerImage, Size) ->
     Configs2 = chain_all_containers(Configs),
     CfgMap = maps:from_list([{M, maps:from_list(Cts)} || {M, Cts} <- Configs2]),
     ok = file:write_file("ring.config", io_lib:format("~p.~n", [CfgMap])).
+
+hypercube(DockerImage, N) ->
+    Machines = fly_machines(),
+    Vertices = gen_hypercube_vertices(N),
+    Hypercube = connect_hypercube_vertices(N, Vertices),
+    FormattedHypercube = hypercube_to_string(Hypercube),
+    CfgMap = gen_hypercube_containers(DockerImage, Machines, FormattedHypercube),
+    ok = file:write_file("hypercube.config", io_lib:format("~p.~n", [CfgMap])).
 
 fly_machines() ->
     {200, Machines} = braid_rest:instances(),
@@ -96,3 +105,53 @@ gen_ring_neighbours([First, Second | _] = L) ->
 gen_ring_neighbours(Ring, [_SecondLast, _Last]) -> Ring;
 gen_ring_neighbours(Ring, [Previous, Current, Next | TL]) ->
     gen_ring_neighbours([[Previous, Next]|Ring], [Current, Next |TL]).
+
+% HYPERCUBE functions
+
+gen_hypercube_vertices(N) ->
+    Vertices = round(math:pow(2, N)),
+    [V || V <- lists:seq(0, Vertices - 1)].
+
+connect_hypercube_vertices(N, Vertices) ->
+    Masks = [round(math:pow(2, E)) || E <- lists:seq(0, N - 1)],
+    [{V, find_neighbours(V, Masks)} || V <- Vertices].
+
+find_neighbours(Vertex, Masks) ->
+    [Vertex bxor M || M <- Masks].
+
+hypercube_to_string(Hypercube) ->
+    [vertex_to_string(VE) ||VE <- Hypercube].
+
+vertex_to_string({V, Neighbours}) ->
+    {index_to_string(V), [index_to_string(E) || E <- Neighbours]}.
+
+index_to_string(Integer) ->
+    io_lib:format("~.2B", [Integer]).
+
+gen_hypercube_containers(Image, Machines, Hypercube) ->
+    Sizes = divide_sizes_with_reminder(length(Hypercube), length(Machines)),
+    Occupancy = lists:zip(Sizes, Machines),
+    rec_hypercube_containers(Image, Occupancy, Hypercube, #{}, []).
+
+rec_hypercube_containers(Image, [], [], N2M, MachineConfigs) -> 
+    maps:from_list([
+        {M,
+         maps:from_list([
+            {Name, 
+                #{
+                    image => Image,
+                    connections => [iolist_to_binary([N, "@", maps:get(N, N2M)]) 
+                                        || N <- Conns]
+                }
+            } 
+                || {Name, Conns} <- Containers])
+        }
+        || {M, Containers} <- MachineConfigs]);
+rec_hypercube_containers(Image, [{Quantity, Machine} | Others], 
+                         Hypercube, N2M, Cfg) ->
+    {ToMachine, Rest} = lists:split(Quantity, Hypercube),
+    NewN2M = maps:from_list([{N, Machine} || {N,_} <- ToMachine]),
+    Containers = [{list_to_binary(Name), Connections}
+                    || {Name, Connections} <- ToMachine],
+    NewCfg = [{Machine, Containers} | Cfg],
+    rec_hypercube_containers(Image, Others, Rest, maps:merge(NewN2M, N2M), NewCfg).
