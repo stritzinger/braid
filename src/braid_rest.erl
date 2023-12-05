@@ -32,7 +32,6 @@ rpc(Instance, CID, M, F, A) ->
     BinF = base64:encode(term_to_binary(list_to_atom(F))),
     {ok, Tokens, _} = erl_scan:string(A ++ "."),
     {ok, Term} = erl_parse:parse_term(Tokens),
-    io:format("Parsed term: ~p\n",[Term]),
     BinArgs = base64:encode(term_to_binary(Term)),
     QS = [{"cid", CID}, {"m", BinM}, {"f", BinF}, {"args", BinArgs}],
     {Code, Result} = send_to_instance(get, Instance, "rpc", QS),
