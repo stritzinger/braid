@@ -27,11 +27,86 @@ We currently only have a `mesh` and `ring` setups with arbitrary scale.
     rebar3 escriptize
     ./_build/default/bin/braid config ring 4 my-hub/my-image:tag
     ./_build/default/bin/braid launch ring.config
-    ./_build/default/bin/braid list ...
-    ./_build/default/bin/braid logs ...
-    ./_build/default/bin/braid rpc ...
+    ./_build/default/bin/braid list ring.config
+    ./_build/default/bin/braid logs <machine-id> <contianer-id>
+    ./_build/default/bin/braid rpc <machine-id> <contianer-id> module function <args>
     ...
 
+### CLI API commands
+
+### config
+    braid config ring 4 my-hub/my-image:tag
+
+Generates a braidnet configuration for quick testing load balancing across the available braidnet machines. Connections between the instances follow a predefined topology between the ones available:
+
+- `mesh`: fully connected mesh
+- `ring`: a ring
+- `hyperbube`: https://en.wikipedia.org/wiki/Hypercube
+
+You can set the size and the docker image you want to use. The braidnet machine ids a queried just in time.
+
+#### ring.config
+
+```
+#{<<"148e451b536dd8">> =>
+      #{<<"zrnhok">> =>
+            #{image => <<"my-repo/my-image:tag">>,
+              connections =>
+                  [<<"smumfu@2866e31ce15318">>,<<"xhlanz@e784e666f0d778">>]}},
+  <<"2866e31ce15318">> =>
+      #{<<"smumfu">> =>
+            #{image => <<"my-repo/my-image:tag">>,
+              connections =>
+                  [<<"zrnhok@148e451b536dd8">>,<<"ysiped@91857556f71778">>]}},
+  <<"91857556f71778">> =>
+      #{<<"ysiped">> =>
+            #{image => <<"my-repo/my-image:tag">>,
+              connections =>
+                  [<<"xhlanz@e784e666f0d778">>,<<"smumfu@2866e31ce15318">>]}},
+  <<"e784e666f0d778">> =>
+      #{<<"xhlanz">> =>
+            #{image => <<"my-repo/my-image:tag">>,
+              connections =>
+                  [<<"ysiped@91857556f71778">>,<<"zrnhok@148e451b536dd8">>]}}}.
+```
+
+### launch
+    braid launch mesh.config
+
+Launches the configuration spawning the nodes on remote containers on the machines present in the configuration.
+
+### destroy
+    braid destroy mesh.config
+
+Deletes the remote containers listed in the configuration on all machines.
+
+### list
+    braid list mesh.config
+
+Lists the remote containers described in the configuration on all machines.
+The container `id` and `status` is returned.
+It can be either: `starting`, `running` or `lost`
+```
+{<<"148e451b536dd8">>,
+ {200,
+  [#{<<"id">> => <<"468dfc93-eb53-4c0f-8b69-958e62549459">>,
+     <<"image">> => <<"ziopio/braidsquid:0.1.0">>,<<"name">> => <<"bob">>,
+     <<"status">> => <<"running">>},
+     ...
+```
+### logs
+    braid logs <machine-id> <contianer-id>
+
+After you runned the list command, you can user the `"id"` of any container and ask the remote machine for its logs. Braidnet observes its containers and caches their logs. This returns you the latest logs.
+
+### rpc
+    braid rpc <machine-id> <contianer-id> <module> <function> <args>
+
+RPC to a selected container, this comes handy to test the topology by triggering an event in a particular instance inside the network.
+
+`<args>` is a list of erlang terms, remember to use an escaped string:
+
+    "[1, 3, atom, fun erlang:node/0, {my_tuple, \"lol\"}]"
 
 ## braid app as a library
 
