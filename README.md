@@ -13,23 +13,25 @@ This project contains a single module library that acts locally using the OPT sl
 
 The CLI is the fastest way to use this client, generate the escript and use the setup command.
 
-- braidnet domain (e.g. `braidnet.fly.dev`)
-- the authenticaiton token used in REST requests
-
 ```
     rebar3 escriptize
     ./_build/default/bin/braid setup
 ````
+You will need to enter these settings:
 
-Once your braidnet clould is online on Fly.io, you can generate a braidnet config.
-We currently only have a `mesh` and `ring` setups with arbitrary scale.
+- braidnet domain (e.g. `braidnet.fly.dev`)
+- the authenticaiton token used in REST requests
 
-    rebar3 escriptize
+These values depend on how you deployed braidnet. We only support Fly infrastructure at the moment. The authenticaiton token is a Fly secret in the braidnet Fly App. Make sure to use the same here. Also put the correct Fly application domain name.
+
+Once your braidnet clould is online on Fly.io, you can generate a braidnet config. This is an example of the ideal sequence of commands to test your application:
+
     ./_build/default/bin/braid config ring 4 my-hub/my-image:tag
     ./_build/default/bin/braid launch ring.config
     ./_build/default/bin/braid list ring.config
     ./_build/default/bin/braid logs <machine-id> <contianer-id>
     ./_build/default/bin/braid rpc <machine-id> <contianer-id> module function <args>
+    ./_build/default/bin/braid destroy ring.config
     ...
 
 ### CLI API commands
@@ -43,9 +45,9 @@ Generates a braidnet configuration for quick testing load balancing across the a
 - `ring`: a ring
 - `hyperbube`: https://en.wikipedia.org/wiki/Hypercube
 
-You can set the size and the docker image you want to use. The braidnet machine ids a queried just in time.
+You can set the size and the docker image you want to use. The braidnet machine ids are queried just in time.
 
-#### ring.config
+#### ring.config example
 
 ```
 #{<<"148e451b536dd8">> =>
