@@ -1,6 +1,6 @@
 {application, braid,
  [{description, "An OTP library"},
-  {vsn, "0.1.0"},
+  {vsn, semver},
   {registered, []},
   {mod, {braid_app, []}},
   {applications,
