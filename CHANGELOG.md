@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-09-10
+
+### Added
+* Links to Github and Changelog.
+
+### Changed
+* README: fix fenced code blocks and add language hints.
+* `rebar.config`: add documentation configuration and tidy profiles.
+
+### Fixed
+* Fixed typo in license string.
+
 ## [1.0.0] - 2025-09-09
 
 ### Added
@@ -33,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `call/5` function which makes an RPC call to one node.
 * `netload3` function that can load modules on only one node.
 
-[Unreleased]: https://github.com/stritzinger/braid/compare/v1.0.0...master
+[Unreleased]: https://github.com/stritzinger/braid/compare/v1.0.1...master
+[1.0.1]: https://github.com/stritzinger/braid/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/stritzinger/braid/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/stritzinger/braid/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/stritzinger/braid/releases/tag/v0.0.1

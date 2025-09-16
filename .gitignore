@@ -18,3 +18,5 @@ _build
 rebar3.crashdump
 *~
 .DS_Store
+doc
+AGENTS.md

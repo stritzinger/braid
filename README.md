@@ -16,7 +16,7 @@ The CLI is the fastest way to use this client, generate the escript and use the 
 ```
     rebar3 escriptize
     ./_build/default/bin/braid setup
-````
+```
 You will need to enter these settings:
 
 - braidnet domain (e.g. `braidnet.fly.dev`)
@@ -180,7 +180,7 @@ You can create a cluster with:
 
 To check the cluster connections:
 
-```
+```erlang
 (manager@host)2> braid:multicall(Cluster, erlang, nodes, []).
 #{n1 => ['n4@host','n2@host'],
   n2 => ['n1@host','n3@host'],

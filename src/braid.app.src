@@ -1,5 +1,5 @@
 {application, braid,
- [{description, "An OTP library"},
+ [{description, "An Erlang library to create and connect an arbitrary cluster of nodes"},
   {vsn, semver},
   {registered, []},
   {mod, {braid_app, []}},
@@ -23,6 +23,8 @@
   ]},
   {modules, []},
 
-  {licenses, ["Apache 2.0"]},
-  {links, []}
+  {licenses, ["Apache-2.0"]},
+  {links,
+    [{"Changelog", "https://github.com/stritzinger/braid/blob/master/CHANGELOG.md"},
+     {"GitHub", "https://github.com/stritzinger/braid"}]}
  ]}.
